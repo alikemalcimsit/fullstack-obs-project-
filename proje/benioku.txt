@@ -1,0 +1,6 @@
+projeyi çalıştırmak için ilk olarak veri tabanı scriptini çalıştırınız daha sonra 
+backend klasöürndeki node.js projesini vscode ile açarak terminale npm start yazınız
+daha sonra frontend klasöründeki react.js projesini vs code ile açarak backend i kapatmadan
+terminale npm start yazarak çalıştırınız. 
+
+Video drive linki : 

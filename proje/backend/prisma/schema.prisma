@@ -1,0 +1,404 @@
+// Prisma Schema - Öğrenci Bilgi Sistemi
+// MS SQL Server için optimize edilmiş OBS veritabanı şeması
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// TEMEL TABLOLAR
+// =====================================================
+
+// Fakülte Tablosu
+model Fakulte {
+  id         Int      @id @default(autoincrement())
+  fakulteAdi String   @db.VarChar(100)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  bolumler Bolum[]
+
+  @@map("fakulteler")
+}
+
+// Bölüm Tablosu
+model Bolum {
+  id          Int      @id @default(autoincrement())
+  bolumAdi    String   @db.VarChar(100)
+  fakulteId   Int
+  donemSayisi Int      @default(8)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fakulte     Fakulte    @relation(fields: [fakulteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ogrenciler  Ogrenci[]
+  ogretmenler Ogretmen[]
+  dersler     Ders[]
+
+  @@map("bolumler")
+}
+
+// Dönem Tablosu
+model Donem {
+  id        Int      @id @default(autoincrement())
+  donemAdi  String   @db.VarChar(50)
+  yil       String?  @db.VarChar(20)
+  aktif     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dersler Ders[]
+
+  @@map("donemler")
+}
+
+// Sınıf Tablosu
+model Sinif {
+  id        Int      @id @default(autoincrement())
+  sinifAdi  String   @db.VarChar(50)
+  kapasite  Int      @default(30)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dersProgramlari DersProgrami[]
+
+  @@map("siniflar")
+}
+
+// =====================================================
+// KULLANICI TABLOLARI
+// =====================================================
+
+// Öğrenci Tablosu
+model Ogrenci {
+  id              Int       @id @default(autoincrement())
+  tcNo            String    @unique @db.VarChar(11)
+  ogrNo           String    @unique @db.VarChar(20)
+  isim            String    @db.VarChar(50)
+  soyad           String    @db.VarChar(50)
+  email           String    @unique @db.VarChar(100)
+  sifre           String    @db.VarChar(255)
+  telNo           String?   @db.VarChar(20)
+  adres           String?   @db.Text
+  dogumTarihi     DateTime?
+  cinsiyet        String?   @db.VarChar(10)
+  fotograf        String?   @db.Text
+  statu           String    @default("Aktif") @db.VarChar(50)
+  geldigiOkul     String?   @db.VarChar(100)
+  kayitTarihi     DateTime  @default(now())
+  mezuniyetTarihi DateTime?
+  agno            Float     @default(0.00)
+  sube            String?   @db.VarChar(5)
+  okuduguDonem    Int       @default(1)
+  akademikYil     String?   @db.VarChar(20)
+  gelisSekli      String?   @db.VarChar(20)
+  gelisPuani      Float?
+  bolumId         Int
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  bolum              Bolum         @relation(fields: [bolumId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  dersKayitlari      OgrenciDers[]
+  yoklamalar         Yoklama[]
+  alinanMesajlar     Mesaj[]       @relation("AliciOgrenci")
+  gonderilenMesajlar Mesaj[]       @relation("GonderenOgrenci")
+  notlar             Not[]
+  dersSecimleri      DersSecim[]
+  kulupUyelikleri    KulupUyelik[]
+
+  @@map("ogrenciler")
+}
+
+// Öğretmen Tablosu
+model Ogretmen {
+  id        Int      @id @default(autoincrement())
+  tcNo      String   @unique @db.VarChar(11)
+  isim      String   @db.VarChar(50)
+  soyad     String   @db.VarChar(50)
+  email     String   @unique @db.VarChar(100)
+  sifre     String   @db.VarChar(255)
+  telNo     String?  @db.VarChar(20)
+  unvan     String?  @db.VarChar(50)
+  bolumId   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bolum              Bolum          @relation(fields: [bolumId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  verdigiDersler     OgretmenDers[]
+  dersProgramlari    DersProgrami[]
+  dersSecimleri      DersSecim[]
+  alinanMesajlar     Mesaj[]        @relation("AliciOgretmen")
+  gonderilenMesajlar Mesaj[]        @relation("GonderenOgretmen")
+  duyurular          Duyuru[]
+
+  @@map("ogretmenler")
+}
+
+// Admin Tablosu
+model Admin {
+  id        Int      @id @default(autoincrement())
+  tcNo      String   @unique @db.VarChar(11)
+  isim      String   @db.VarChar(50)
+  soyad     String   @db.VarChar(50)
+  email     String   @unique @db.VarChar(100)
+  sifre     String   @db.VarChar(255)
+  telNo     String?  @db.VarChar(20)
+  rol       String   @default("admin") @db.VarChar(20) // admin, superadmin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("adminler")
+}
+
+// =====================================================
+// DERS TABLOLARI
+// =====================================================
+
+// Ders Tablosu
+model Ders {
+  id        Int      @id @default(autoincrement())
+  dersKodu  String   @unique @db.VarChar(20)
+  dersAdi   String   @db.VarChar(100)
+  kredi     Int      @default(3)
+  akts      Int      @default(5)
+  bolumId   Int
+  donemId   Int
+  zorunlu   Boolean  @default(true)
+  secmeli   Boolean  @default(false)
+  kontenjan Int      @default(40)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bolum            Bolum          @relation(fields: [bolumId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  donem            Donem          @relation(fields: [donemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ogrenciDersleri  OgrenciDers[]
+  ogretmenDersleri OgretmenDers[]
+  dersProgramlari  DersProgrami[]
+  yoklamalar       Yoklama[]
+  sinavlar         Sinav[]
+  dersSecimleri    DersSecim[]
+
+  @@map("dersler")
+}
+
+// Öğrenci-Ders İlişkisi (Ders Kayıt)
+model OgrenciDers {
+  id          Int      @id @default(autoincrement())
+  ogrenciId   Int
+  dersId      Int
+  harfNotu    String?  @db.VarChar(5)
+  donemNotu   Float?
+  vize        Float?
+  final       Float?
+  butunleme   Float?
+  devamsizlik Int      @default(0)
+  durum       String   @default("Devam Ediyor") @db.VarChar(30)
+  kayitTarihi DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ogrenci Ogrenci @relation(fields: [ogrenciId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ders    Ders    @relation(fields: [dersId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([ogrenciId, dersId])
+  @@map("ogrenci_ders")
+}
+
+// Öğretmen-Ders İlişkisi
+model OgretmenDers {
+  id         Int      @id @default(autoincrement())
+  ogretmenId Int
+  dersId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ogretmen Ogretmen @relation(fields: [ogretmenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ders     Ders     @relation(fields: [dersId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([ogretmenId, dersId])
+  @@map("ogretmen_ders")
+}
+
+// Ders Seçimi
+model DersSecim {
+  id          Int      @id @default(autoincrement())
+  ogrenciId   Int
+  dersId      Int
+  ogretmenId  Int?
+  onayDurumu  String   @default("Beklemede") @db.VarChar(20)
+  secimTarihi DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ogrenci  Ogrenci   @relation(fields: [ogrenciId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ders     Ders      @relation(fields: [dersId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ogretmen Ogretmen? @relation(fields: [ogretmenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("ders_secimleri")
+}
+
+// Ders Programı
+model DersProgrami {
+  id         Int      @id @default(autoincrement())
+  dersId     Int
+  ogretmenId Int
+  sinifId    Int
+  gun        Int      // 1: Pazartesi, 2: Salı, ...
+  baslangic  String   @db.VarChar(5) // "09:00"
+  bitis      String   @db.VarChar(5) // "10:00"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ders     Ders     @relation(fields: [dersId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ogretmen Ogretmen @relation(fields: [ogretmenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sinif    Sinif    @relation(fields: [sinifId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("ders_programlari")
+}
+
+// =====================================================
+// SINAV VE NOT TABLOLARI
+// =====================================================
+
+// Sınav Tablosu
+model Sinav {
+  id              Int       @id @default(autoincrement())
+  sinavAdi        String    @db.VarChar(100)
+  dersId          Int
+  sinavTarihi     DateTime
+  sinavTuru       String    @db.VarChar(30) // Vize, Final, Bütünleme
+  sure            Int?      // Dakika cinsinden
+  agirlik         Float     @default(0.4) // Vize: 0.4, Final: 0.6
+  notlarAcikMi    Boolean   @default(false) // Notlar öğrencilere açık mı?
+  harfNotuAcikMi  Boolean   @default(false) // Harf notu açıklandı mı?
+  // T-Skoru istatistikleri (hesaplandıktan sonra saklanır)
+  ortalama        Float?    // Sınıf ortalaması
+  standartSapma   Float?    // Standart sapma
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  ders   Ders  @relation(fields: [dersId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notlar Not[]
+
+  @@map("sinavlar")
+}
+
+// Not Tablosu
+model Not {
+  id            Int       @id @default(autoincrement())
+  ogrenciId     Int
+  sinavId       Int
+  puan          Float     // Ham puan (0-100)
+  tSkoru        Float?    // T-Skoru (hesaplanmış)
+  harfNotu      String?   @db.VarChar(5) // AA, BA, BB, CB, CC, DC, DD, FF
+  aciklama      String?   @db.VarChar(255) // Not açıklaması
+  geriCekildiMi Boolean   @default(false) // Not geri çekildi mi?
+  geriCekmeTarihi DateTime? // Geri çekme tarihi
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  ogrenci Ogrenci @relation(fields: [ogrenciId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sinav   Sinav   @relation(fields: [sinavId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([ogrenciId, sinavId])
+  @@map("notlar")
+}
+
+// =====================================================
+// YOKLAMA
+// =====================================================
+
+model Yoklama {
+  id        Int      @id @default(autoincrement())
+  ogrenciId Int
+  dersId    Int
+  tarih     DateTime
+  durum     String   @db.VarChar(10) // "Var", "Yok", "İzinli"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ogrenci Ogrenci @relation(fields: [ogrenciId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ders    Ders    @relation(fields: [dersId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("yoklamalar")
+}
+
+// =====================================================
+// İLETİŞİM
+// =====================================================
+
+// Mesaj Tablosu
+model Mesaj {
+  id                 Int      @id @default(autoincrement())
+  gonderenOgrenciId  Int?
+  gonderenOgretmenId Int?
+  aliciOgrenciId     Int?
+  aliciOgretmenId    Int?
+  konu               String?  @db.VarChar(200)
+  mesajMetni         String   @db.Text
+  okundu             Boolean  @default(false)
+  tarih              DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  gonderenOgrenci  Ogrenci?  @relation("GonderenOgrenci", fields: [gonderenOgrenciId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  gonderenOgretmen Ogretmen? @relation("GonderenOgretmen", fields: [gonderenOgretmenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  aliciOgrenci     Ogrenci?  @relation("AliciOgrenci", fields: [aliciOgrenciId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  aliciOgretmen    Ogretmen? @relation("AliciOgretmen", fields: [aliciOgretmenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("mesajlar")
+}
+
+// Duyuru Tablosu
+model Duyuru {
+  id          Int       @id @default(autoincrement())
+  baslik      String    @db.VarChar(255)
+  icerik      String    @db.Text
+  ogretmenId  Int?
+  onemliMi    Boolean   @default(false)
+  aktif       Boolean   @default(true)
+  yayinTarihi DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  ogretmen    Ogretmen? @relation(fields: [ogretmenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("duyurular")
+}
+
+// =====================================================
+// KULÜPLER
+// =====================================================
+
+model Kulup {
+  id        Int      @id @default(autoincrement())
+  kulupAdi  String   @db.VarChar(100)
+  aciklama  String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  uyeler KulupUyelik[]
+
+  @@map("kulupler")
+}
+
+model KulupUyelik {
+  id            Int      @id @default(autoincrement())
+  ogrenciId     Int
+  kulupId       Int
+  pozisyon      String?  @db.VarChar(50)
+  katilimTarihi DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ogrenci Ogrenci @relation(fields: [ogrenciId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  kulup   Kulup   @relation(fields: [kulupId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([ogrenciId, kulupId])
+  @@map("kulup_uyelikleri")
+}

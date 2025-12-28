@@ -1,6 +1,188 @@
-projeyi çalıştırmak için ilk olarak veri tabanı scriptini çalıştırınız daha sonra 
-backend klasöürndeki node.js projesini vscode ile açarak terminale npm start yazınız
-daha sonra frontend klasöründeki react.js projesini vs code ile açarak backend i kapatmadan
-terminale npm start yazarak çalıştırınız. 
+# OBS Projesi (Ramazan Ayaz)
 
-Video drive linki : 
+
+
+İlk olarak. verilen sql dosyasını sql server üzerinden çalıştırın ve veri tabanını oluşturun
+
+daha sonra backend klasörüne giderek npm i yapıp paketleri yükleyin
+prisma orm kullanıldığı için 
+
+npx prisma db pull      # mevcut tablo yapısını prisma'ya yazar
+npx prisma generate 
+npx prisma db seed // TEMP DATA EKLER VERİ TABANINA 
+
+
+BACKEND DE ENV DEKİ DB BAĞLANTI URL İ DEĞİŞMEYİ UNUTMAYIN 
+
+DATABASE_URL="sqlserver://KULLANICI:PAROLA@SUNUCU:PORT;database=OBS;encrypt=true"
+JWT_SECRET="gizli-anahtar"
+PORT=5000
+ ve npm run dev komutu ile 
+backend i çalıştırın npm start ile de çalıştırabilirsiniz 
+
+daha sonra obs2 klasörüne giderek npm i yapın ve paketleri yükleyin npm start veya npm run dev komutu ile de frontend i çalıştırın 
+
+
+
+
+SQL Server, Express/Prisma backend ve React (obs2) frontend ile tam yığın Öğrenci Bilgi Sistemi. Aşağıda sıfırdan kurulum ve çalıştırma adımları yer alır.
+
+## İçerik
+
+- `backend/`: Express API, Prisma ORM
+- `obs2/`: React + Tailwind arayüzü
+
+- `benioku.txt`: Kısa özet
+
+## Önkoşullar
+
+- Node.js 18+
+- npm
+- SQL Server (local ya da uzak)
+
+## Veritabanı Kurulumu
+
+verilen .sql uzantılı dosyayı ms sql üzerinden çalıştırın 
+
+
+## Backend (Express + Prisma)
+
+```bash
+cd backend
+npm install
+```
+
+1. `.env` oluştur:
+
+```env
+DATABASE_URL="sqlserver://KULLANICI:PAROLA@SUNUCU:PORT;database=OBS;encrypt=true"
+JWT_SECRET="gizli-anahtar"
+PORT=5000
+```
+
+2. Şemayı çek ve client üret:
+
+```bash
+npx prisma db pull
+npx prisma generate
+```
+
+3. Seed (isteğe bağlı, Ramazan Ayaz verisi dahil):
+
+```bash
+npx prisma db seed
+```
+
+4. Sunucu:
+
+```bash
+npm start        # prod
+npm run dev      # geliştirme
+```
+
+## Frontend (React - obs2)
+
+```bash
+cd obs2
+npm install
+npm start
+```
+Gerekirse backend URL’ini `src/services/api.js` içinde güncelle.
+
+## Örnek Girişler
+
+- Öğrenci: `ogrNo=210707069`, şifre `12345` (Ramazan Ayaz)
+- Diğer admin/öğretmen kullanıcıları: `backend/prisma/seed.js` içinde
+
+## SP / Trigger / Fonksiyon / View Özeti
+
+- SP (5): `sp_BolumDersleri`, `sp_BolumOgretmenleri`, `sp_DonemDersleri`, `sp_EkleOgrenci`, `sp_OgrenciyeAitYoklama`
+- Trigger (log + fonksiyonel): `trg_Notlar_InsertLog`, `trg_Notlar_UpdateLog`, `trg_Yoklama_StatusLog`, `trg_Duyuru_InsertLog`, `trg_OgrenciDers_KontenjanGuard`, `trg_Notlar_AfterChange_UpdateAGNO`
+- Fonksiyon (3): `BolumdekiOgrenciSayisi`, `DonemdekiDersSayisi`, `OrtalamaAGNOBolum`
+- View (1): `BolumdekiOgrenciler`
+
+## Notlar
+
+- SQL Server dışındaki veritabanları desteklenmez.
+- Üretim ortamında `encrypt` ve sertifika ayarlarını ihtiyaca göre düzenle.
+ 
+## Proje Yapısı
+
+```text
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma      # Veritabanı şeması
+│   │   └── seed.js            # Örnek veri
+│   ├── src/
+│   │   ├── config/
+│   │   │   ├── auth.js        # JWT yardımcıları
+│   │   │   └── database.js    # Prisma client
+│   │   ├── routes/
+│   │   │   ├── auth.routes.js
+│   │   │   ├── ogrenci.routes.js
+│   │   │   ├── ogretmen.routes.js
+│   │   │   ├── ders.routes.js
+│   │   │   ├── duyuru.routes.js
+│   │   │   ├── mesaj.routes.js
+│   │   │   ├── yoklama.routes.js
+│   │   │   ├── not.routes.js
+│   │   │   └── bolum.routes.js
+│   │   └── index.js           # Ana sunucu dosyası
+│   ├── .env                   # Ortam değişkenleri
+│   └── package.json
+│
+├── obs2/                      # Frontend
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/            # Görseller
+│   │   ├── components/        # React bileşenleri
+│   │   ├── layouts/           # Sayfa düzenleri
+│   │   ├── pages/             # Sayfa bileşenleri
+│   │   ├── services/          # API servisleri
+│   │   │   └── api.js
+│   │   ├── utils/             # Yardımcı fonksiyonlar
+│   │   ├── App.js
+│   │   └── index.js
+│   └── package.json
+│
+└── README.md
+```
+
+## 🔧 Geliştirme
+
+### Veritabanı Migrations
+
+```bash
+# Şema değişikliklerini uygula
+npx prisma db push
+
+# Migration oluştur
+npx prisma migrate dev --name migration_name
+
+# Prisma Studio (GUI)
+npx prisma studio
+```
+
+### Kod Formatı
+
+```bash
+# Frontend
+cd obs2
+npm run start
+
+# Backend
+cd backend
+npm run dev 
+```
+
+
+## 👥 Katkıda Bulunanlar
+
+- Proje Sahibi
+Ramazan Ayaz
+---
+
+
+
+
+

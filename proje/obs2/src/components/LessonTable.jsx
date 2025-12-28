@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function LessonTable({dersler,index}) {
+export default function LessonTable({ dersler, index }) {
   return (
     <table className="w-11/12 m-auto bg-white border border-gray-300">
     <thead>
@@ -11,11 +11,11 @@ export default function LessonTable({dersler,index}) {
       </tr>
     </thead>
     <tbody>
-      {dersler.map((ders) => (
-        <tr key={ders.id} className="hover:bg-gray-100">
+      {Array.isArray(dersler) && dersler.map((ders, idx) => (
+        <tr key={ders.id ?? idx} className="hover:bg-gray-100">
           
-          <td className="py-2 px-2 text-center border-b">{ders.DersAdi}</td>
-          <td className="py-2 px-2 text-center border-b">{ders.kredi}</td>
+          <td className="py-2 px-2 text-center border-b">{ders.dersAdi || ders.DersAdi || '-'}</td>
+          <td className="py-2 px-2 text-center border-b">{ders.kredi ?? ders.Kredi ?? '-'}</td>
           <td className="py-2 px-2 text-center border-b">
          {index}
           </td>

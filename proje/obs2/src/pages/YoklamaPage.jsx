@@ -1,96 +1,94 @@
-import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import YoklamaTable from '../components/YoklamaTable';
+import { ogrenciService, authService } from '../services/api';
 
 export default function YoklamaPage() {
   const [student, setStudent] = useState(null);
-  const [bolum, setBolum] = useState(null);
-  const [dersler, setDersler] = useState(null);
-  const [yoklama, setYoklama] = useState(null);
+  const [dersler, setDersler] = useState([]);
+  const [yoklamalar, setYoklamalar] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const { ogrNo } = useParams();
 
-  const getStudent = async () => {
-    try {
-      const response = await axios.get(`http://localhost:5000/ogrenci/${ogrNo}`);
-      setStudent(response.data.user);
-    } catch (error) {
-      console.error('Error fetching student data:', error);
-    }
-  };
-
-  const getDepartment = async () => {
-    if (student) {
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const response2 = await axios.get(`http://localhost:5000/bolumler/${student.BolumID}`);
-        setBolum(response2.data.bolum);
+        setLoading(true);
+        
+        // Öğrenci bilgilerini localStorage'dan al
+        const currentUser = authService.getCurrentUser();
+        if (currentUser) {
+          setStudent(currentUser);
+          
+          // Öğrencinin derslerini al
+          const derslerRes = await ogrenciService.getDersler(currentUser.ogrNo);
+          setDersler(derslerRes?.dersler || derslerRes || []);
+          
+          // Yoklama bilgilerini al ve normalize et
+          const yoklamaRes = await ogrenciService.getYoklama(currentUser.ogrNo);
+          const rawYoklamalar = yoklamaRes?.yoklamalar || yoklamaRes || [];
+          const normalized = rawYoklamalar.map((y) => ({
+            DersID: y.dersId || y.DersID || y.ders?.id,
+            Durum: y.durum || y.Durum,
+            Tarih: y.tarih,
+          }));
+          setYoklamalar(normalized);
+        }
       } catch (error) {
-        console.error('Error fetching department data:', error);
+        console.error('Veri alınamadı:', error);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    fetchData();
+  }, [ogrNo]);
+
+  // Yoklama verilerini derslerle eşleştir
+  const getYoklamaData = () => {
+    return (dersler || []).map((od) => {
+      const ders = od.ders || od;
+      const dersYoklamalari = yoklamalar.filter((y) => y.DersID === ders?.id);
+      const toplamDers = dersYoklamalari.length;
+      const devamsizlik = dersYoklamalari.filter((y) => (y.Durum || '').toLowerCase() !== 'var').length;
+      const devamOrani = toplamDers > 0 ? (((toplamDers - devamsizlik) / toplamDers) * 100).toFixed(0) : '100';
+
+      return {
+        DersID: ders?.id,
+        DersKodu: ders?.dersKodu,
+        DersAdi: ders?.dersAdi,
+        kredi: ders?.kredi,
+        DonemID: ders?.donemId,
+        toplamDers,
+        devamsizlik,
+        devamOrani,
+        yoklamalar: dersYoklamalari,
+      };
+    });
   };
 
-  const getLesson = async () => {
-    if (student) {
-      try {
-        const response3 = await axios.get(`http://localhost:5000/dersler/${student.BolumID}`);
-        console.log(student.akademikDonem);
-
-        // Akademik dönemi sayıya dönüştür
-        const numericAkademikDonem = parseInt(student.akademikDonem, 10);
-
-        const donemDersleri = response3.data.dersler.filter((ders) => ders.DonemID === numericAkademikDonem);
-        setDersler(donemDersleri);
-        console.log("response3", dersler);
-      } catch (error) {
-        console.error('Error fetching lesson data:', error);
-      }
-    }
-  };
-
-  const getYoklamabyLesson = async () => {
-    try {
-      if (dersler) {  // dersler değişkeni null değilse işleme devam et
-        const response = await axios.get(`http://localhost:5000/yoklama/${ogrNo}`);
-        setYoklama(response.data.user);
-        console.log("yoklama",yoklama)
-      }
-    } catch (error) {
-      console.error('Error fetching student data:', error);
-    }
-  };
-  
-
-  useEffect(() => {
-    getStudent();
-  }, []);
-
-  useEffect(() => {
-    getDepartment();
-  }, [student]);
-
-  useEffect(() => {
-    getLesson();
-  }, [bolum, student]); // bolum ve student bağımlılıkları eklendi
-
-  useEffect(() => {
-    getYoklamabyLesson()
-  }, [dersler,bolum, student]); // bolum ve student bağımlılıkları eklendi
-
-  console.log('student:', student);
-  console.log('bolum:', bolum);
-  console.log('dersler:', dersler);
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className='space-y-8 mt-20'>
-      <h1 className='text-center text-3xl font-bold'>{bolum && bolum.BolumAdi}</h1>
+      <h1 className='text-center text-3xl font-bold'>
+        {student?.bolum?.bolumAdi || 'Yoklama Bilgisi'}
+      </h1>
 
       <div>
-        {dersler ? (
-          <YoklamaTable yoklama={yoklama} dersler={dersler} />
+        {dersler.length > 0 ? (
+          <YoklamaTable yoklama={yoklamalar} dersler={getYoklamaData()} />
         ) : (
-          <p>Loading...</p>
+          <div className="text-center text-gray-500 py-8">
+            <p>Henüz yoklama verisi bulunmamaktadır.</p>
+          </div>
         )}
       </div>
     </div>

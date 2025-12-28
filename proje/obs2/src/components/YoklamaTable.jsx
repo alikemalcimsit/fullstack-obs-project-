@@ -15,36 +15,36 @@ export default function YoklamaTable({ dersler, yoklama }) {
         </tr>
       </thead>
       <tbody>
-        {dersler &&
-          dersler.map((ders) => {
-            // Ensure that yoklama is defined and is an array
-            if (yoklama && Array.isArray(yoklama)) {
-              const attendanceCount = yoklama.filter((y) => y.DersID === ders.DersID && y.Durum === 'Var').length;
-              const totalSessions = yoklama.filter((y) => y.DersID === ders.DersID).length;
-              const attendancePercentage = ((attendanceCount / totalSessions) * 100).toFixed(2);
+        {Array.isArray(dersler) && dersler.map((ders) => {
+          if (Array.isArray(yoklama) && yoklama.length > 0) {
+            const dersYoklamalari = yoklama.filter((y) => y.DersID === ders.DersID);
+            const attendanceCount = dersYoklamalari.filter((y) => (y.Durum || '').toLowerCase() === 'var').length;
+            const totalSessions = dersYoklamalari.length;
+            const attendancePercentage = totalSessions > 0 ? ((attendanceCount / totalSessions) * 100).toFixed(2) : '0.00';
 
-              return (
-                <tr key={ders.DersID} className="hover:bg-gray-100">
-                  <td className="py-2 px-2 text-center border-b">{ders.DersAdi}</td>
-                  <td className="py-2 px-2 text-center border-b">{ders.kredi}</td>
-                  <td className="py-2 px-2 text-center border-b">{ders.DonemID}</td>
-                  <td className="py-2 px-2 text-center border-b">
-                    {`${attendanceCount}/${totalSessions} (%${attendancePercentage} Katılım)`}
-                  </td>
-                </tr>
-              );
-            }
-
-            // Handle the case where yoklama is not defined or not an array
             return (
               <tr key={ders.DersID} className="hover:bg-gray-100">
                 <td className="py-2 px-2 text-center border-b">{ders.DersAdi}</td>
                 <td className="py-2 px-2 text-center border-b">{ders.kredi}</td>
                 <td className="py-2 px-2 text-center border-b">{ders.DonemID}</td>
-                <td className="py-2 px-2 text-center border-b">Yoklama Bilgisi Yok</td>
+                <td className="py-2 px-2 text-center border-b">
+                  {totalSessions > 0
+                    ? `${attendanceCount}/${totalSessions} (%${attendancePercentage} Katılım)`
+                    : 'Yoklama Bilgisi Yok'}
+                </td>
               </tr>
             );
-          })}
+          }
+
+          return (
+            <tr key={ders.DersID} className="hover:bg-gray-100">
+              <td className="py-2 px-2 text-center border-b">{ders.DersAdi}</td>
+              <td className="py-2 px-2 text-center border-b">{ders.kredi}</td>
+              <td className="py-2 px-2 text-center border-b">{ders.DonemID}</td>
+              <td className="py-2 px-2 text-center border-b">Yoklama Bilgisi Yok</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
